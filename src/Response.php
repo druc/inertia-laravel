@@ -17,6 +17,7 @@ class Response implements Responsable
     protected $rootView;
     protected $version;
     protected $viewData = [];
+    private $renderUrl;
 
     public function __construct($component, $props, $rootView = 'app', $version = null)
     {
@@ -24,6 +25,17 @@ class Response implements Responsable
         $this->props = $props instanceof Arrayable ? $props->toArray() : $props;
         $this->rootView = $rootView;
         $this->version = $version;
+    }
+
+    public function renderUrl($renderUrl)
+    {
+        $this->renderUrl = $renderUrl;
+        return $this;
+    }
+
+    public function getComponent()
+    {
+        return $this->component;
     }
 
     public function with($key, $value = null)
@@ -75,6 +87,8 @@ class Response implements Responsable
             'props' => $props,
             'url' => $request->getRequestUri(),
             'version' => $this->version,
+            'partial' => !!count($only),
+            'renderUrl' => $this->renderUrl ?? $request->getRequestUri()
         ];
 
         if ($request->header('X-Inertia')) {

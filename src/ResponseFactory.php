@@ -3,6 +3,7 @@
 namespace Inertia;
 
 use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Traits\Macroable;
@@ -15,6 +16,12 @@ class ResponseFactory
     protected $rootView = 'app';
     protected $sharedProps = [];
     protected $version = null;
+    protected $request;
+
+    public function __construct(Request $request)
+    {
+        $this->request = $request;
+    }
 
     public function setRootView($name)
     {
@@ -51,6 +58,38 @@ class ResponseFactory
             : $this->version;
 
         return (string) $version;
+    }
+
+    public function decorate($response, $data, $redirect)
+    {
+        if ($this->request->hasHeader('X-Inertia')) {
+            $only = array_filter(explode(',', $this->request->header('X-Inertia-Partial-Data')));
+
+            if (!$this->request->hasHeader('X-Inertia-Partial-Data')) {
+                $only = array_unique(
+                    array_merge(
+                        array_keys($this->sharedProps),
+                        array_keys($data)
+                    )
+                );
+            }
+
+            $this->request->headers->set('X-Inertia-Partial-Data', implode(',', $only));
+            $this->request->headers->set('X-Inertia-Partial-Component', $response->getComponent());
+        }
+
+        $redirect = $this->request->header('X-Inertia-Render-Url', $redirect);
+
+        return $response->with($data)->renderUrl($redirect);
+    }
+
+    public function back()
+    {
+        if ($this->request->hasHeader('X-Inertia-Render-Url')) {
+            return redirect($this->request->header('X-Inertia-Render-Url'));
+        }
+
+        return redirect()->back();
     }
 
     public function render($component, $props = [])
